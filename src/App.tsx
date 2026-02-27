@@ -19,6 +19,26 @@ function App() {
     }
   }, [isConnected])
 
+  // Keep modal open - re-open if it closes
+  useEffect(() => {
+    if (!isConnected) {
+      const checkAndReopen = () => {
+        const dialog = document.querySelector('[role="dialog"]')
+        if (!dialog && connectButtonWrapperRef.current) {
+          // Modal closed, reopen it
+          const button = connectButtonWrapperRef.current?.querySelector('button') as HTMLButtonElement
+          if (button) {
+            setTimeout(() => button.click(), 50)
+          }
+        }
+      }
+
+      // Check periodically if modal is still open
+      const interval = setInterval(checkAndReopen, 200)
+      return () => clearInterval(interval)
+    }
+  }, [isConnected])
+
   // Prevent backdrop clicks from closing modals using CSS pointer-events
   useEffect(() => {
     const disableBackdropClicks = () => {
