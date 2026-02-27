@@ -1,68 +1,40 @@
-import { useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { ConnectButton, useAbstraxnWallet, WalletModal } from '@abstraxn/signer-react'
 
 function App() {
-  const { isConnected, address, disconnect } = useAbstraxnWallet()
+  const { isConnected } = useAbstraxnWallet()
+  const connectButtonWrapperRef = useRef<HTMLDivElement>(null)
 
-  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false)
+  // Auto-open ConnectButton modal on mount when not connected
+  useEffect(() => {
+    if (!isConnected && connectButtonWrapperRef.current) {
+      // Find the ConnectButton inside the wrapper and click it
+      const timer = setTimeout(() => {
+        const button = connectButtonWrapperRef.current?.querySelector('button') as HTMLButtonElement
+        if (button) {
+          button.click()
+        }
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [isConnected])
 
   return (
     <div className="app">
-      <div className="container">
-        <h1>Abstraxn Signer Quickstart</h1>
-        
-        <div className="status">
-          <p className={isConnected ? 'connected' : 'disconnected'}>
-            Status: {isConnected ? 'Connected' : 'Disconnected'}
-          </p>
-          {address && (
-            <p className="address">
-              Address: <code>{address}</code>
-            </p>
-          )}
+      {!isConnected && (
+        <div ref={connectButtonWrapperRef} style={{ display: 'none' }}>
+          <ConnectButton
+            connectText="Connect Wallet"
+            disableDefaultStyles
+            className="btn btn-primary"
+          />
         </div>
-
-        <div className="actions">
-          {!isConnected ? (
-            <ConnectButton
-              connectText="Connect Wallet"
-              disableDefaultStyles
-              className="btn btn-primary"
-            />
-          ) : (
-            <>
-              <button 
-                onClick={() => setIsWalletModalOpen(true)} 
-                className="btn btn-primary"
-              >
-                Open Wallet
-              </button>
-              <button onClick={() => void disconnect()} className="btn btn-secondary">
-                Disconnect
-              </button>
-            </>
-          )}
-        </div>
-
-        <div className="info">
-          <p>
-            This is a basic quickstart example. Refer to the{' '}
-            <a 
-              href="https://docs.abstraxn.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-            >
-              Abstraxn documentation
-            </a>{' '}
-            for detailed SDK usage.
-          </p>
-        </div>
-      </div>
+      )}
 
       {isConnected && (
         <WalletModal
-          isOpen={isWalletModalOpen}
-          onClose={() => setIsWalletModalOpen(false)}
+          isOpen={true}
+          onClose={() => {}}
         />
       )}
     </div>
