@@ -21,30 +21,37 @@ function App() {
 
   // Prevent backdrop clicks from closing modals
   useEffect(() => {
-    const handleBackdropClick = (e: MouseEvent) => {
+    const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement
       if (!target) return
 
-      // Check if the click target is a backdrop/overlay element
-      // Look for fixed positioned divs that cover the screen (typical modal backdrop pattern)
-      const isBackdrop = 
-        target.style.position === 'fixed' &&
-        (target.style.inset === '0px' || 
-         (target.style.top === '0px' && target.style.left === '0px' && 
-          target.style.right === '0px' && target.style.bottom === '0px')) &&
-        !target.closest('[role="dialog"]') && // Not inside dialog content
-        target.getAttribute('role') !== 'dialog' // Not the dialog itself
-
-      // Also check for common backdrop class names
-      const hasBackdropClass = target.classList.contains('backdrop') ||
-                               target.classList.contains('overlay') ||
-                               target.classList.contains('modal-backdrop') ||
-                               target.getAttribute('data-backdrop') === 'true'
-
-      if (isBackdrop || hasBackdropClass) {
-        // Check if click is actually on backdrop, not on modal content
-        const dialog = target.closest('[role="dialog"]')
-        if (!dialog || dialog === target) {
+      // Find the dialog element
+      const dialog = target.closest('[role="dialog"]')
+      
+      // If clicking outside any dialog, prevent the event
+      if (!dialog) {
+        // Check if this is a backdrop click (clicking on a fixed overlay)
+        const isFixedOverlay = 
+          target.style.position === 'fixed' ||
+          target.closest('[style*="position: fixed"]')
+        
+        if (isFixedOverlay) {
+          e.preventDefault()
+          e.stopPropagation()
+          e.stopImmediatePropagation()
+          return false
+        }
+      } else {
+        // If clicking inside dialog, check if it's on the backdrop area
+        // The dialog might have a backdrop as a direct child
+        const clickedElement = target
+        const isBackdropArea = 
+          clickedElement === dialog.parentElement ||
+          (clickedElement.style.position === 'fixed' && 
+           clickedElement !== dialog &&
+           !dialog.contains(clickedElement))
+        
+        if (isBackdropArea) {
           e.preventDefault()
           e.stopPropagation()
           e.stopImmediatePropagation()
@@ -53,13 +60,47 @@ function App() {
       }
     }
 
-    // Use capture phase to intercept before SDK handlers
-    document.addEventListener('click', handleBackdropClick, true)
-    document.addEventListener('mousedown', handleBackdropClick, true)
+    // Use capture phase with high priority to intercept before SDK handlers
+    const options = { capture: true, passive: false }
+    document.addEventListener('click', handleClick, options)
+    document.addEventListener('mousedown', handleClick, options)
+    document.addEventListener('mouseup', handleClick, options)
+
+    // Also use MutationObserver to watch for modal elements and add listeners directly
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            const element = node as HTMLElement
+            // Check if this is a modal backdrop
+            if (element.style.position === 'fixed' && 
+                (element.style.inset === '0px' || 
+                 (element.style.top === '0px' && element.style.left === '0px'))) {
+              // Add click prevention directly to the backdrop
+              element.addEventListener('click', (e) => {
+                const dialog = element.querySelector('[role="dialog"]')
+                if (!dialog || !dialog.contains(e.target as Node)) {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  e.stopImmediatePropagation()
+                }
+              }, { capture: true })
+            }
+          }
+        })
+      })
+    })
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    })
 
     return () => {
-      document.removeEventListener('click', handleBackdropClick, true)
-      document.removeEventListener('mousedown', handleBackdropClick, true)
+      document.removeEventListener('click', handleClick, options)
+      document.removeEventListener('mousedown', handleClick, options)
+      document.removeEventListener('mouseup', handleClick, options)
+      observer.disconnect()
     }
   }, [])
 
