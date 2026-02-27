@@ -18,3 +18,19 @@ body {
   min-height: 100vh;
 }
 
+/* Prevent backdrop clicks from closing modals - target common modal backdrop patterns */
+body > div[style*="position: fixed"][style*="inset: 0px"],
+body > div[style*="position: fixed"][style*="top: 0px"],
+[data-backdrop],
+[aria-modal="true"] {
+  pointer-events: auto;
+}
+
+/* Ensure modal content is always clickable */
+[role="dialog"] {
+  pointer-events: auto;
+}
+
+[role="dialog"] > * {
+  pointer-events: auto;
+}
