@@ -12,6 +12,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <AbstraxnProvider
         config={{
           apiKey,
+          authMethods: ["otp", "passkey", "google", "twitter", "discord"],
           ui: {
             modal: true,
             onboardTitle: 'Sign In',
