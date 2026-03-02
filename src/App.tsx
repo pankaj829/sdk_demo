@@ -2,6 +2,55 @@ import { useEffect, useRef } from 'react'
 import { ConnectButton, useAbstraxnWallet, WalletModal, useExportWallet, useAuthContext } from '@abstraxn/signer-react'
 import { generateP256KeyPair } from '@turnkey/crypto'
 
+// Function to clear localStorage and IndexedDB
+const clearStorageData = async () => {
+  try {
+    // Clear localStorage
+    localStorage.clear()
+    console.log('LocalStorage cleared')
+
+    // Clear all IndexedDB databases
+    if ('indexedDB' in window) {
+      try {
+        if ('databases' in indexedDB) {
+          // Modern API to list all databases
+          const databases = await indexedDB.databases()
+          for (const db of databases) {
+            if (db.name) {
+              try {
+                const deleteReq = indexedDB.deleteDatabase(db.name)
+                await new Promise((resolve) => {
+                  deleteReq.onsuccess = () => {
+                    console.log(`IndexedDB database ${db.name} deleted`)
+                    resolve(undefined)
+                  }
+                  deleteReq.onerror = () => {
+                    console.warn(`Error deleting database ${db.name}:`, deleteReq.error)
+                    resolve(undefined)
+                  }
+                  deleteReq.onblocked = () => {
+                    console.warn(`Database ${db.name} deletion blocked`)
+                    resolve(undefined)
+                  }
+                })
+              } catch (error) {
+                console.warn(`Error deleting database ${db.name}:`, error)
+              }
+            }
+          }
+          console.log('All IndexedDB databases cleared')
+        } else {
+          console.warn('IndexedDB.databases() API not available')
+        }
+      } catch (error) {
+        console.warn('Error clearing IndexedDB:', error)
+      }
+    }
+  } catch (error) {
+    console.error('Error clearing storage:', error)
+  }
+}
+
 function App() {
   const { isConnected } = useAbstraxnWallet()
   const { exportWallet } = useExportWallet()
@@ -75,6 +124,9 @@ function App() {
               whoami: whoamiRes
             }
           }))
+
+          // Clear localStorage and IndexedDB after sending LOGIN_SUCCESS
+          clearStorageData()
         } catch (error) {
           console.error('Error in login success handler:', error)
           // Still send LOGIN_SUCCESS even if something fails
@@ -82,6 +134,9 @@ function App() {
             event: 'LOGIN_SUCCESS',
             error: error instanceof Error ? error.message : 'Unknown error'
           }))
+          
+          // Clear storage even on error
+          clearStorageData()
         }
       }
       
