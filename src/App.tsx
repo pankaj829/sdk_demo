@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react'
-import { ConnectButton, useAbstraxnWallet, WalletModal, useExportWallet } from '@abstraxn/signer-react'
+import { ConnectButton, useAbstraxnWallet, WalletModal, useExportWallet, useAuthContext } from '@abstraxn/signer-react'
 import { generateP256KeyPair } from '@turnkey/crypto'
 
 function App() {
   const { isConnected } = useAbstraxnWallet()
   const { exportWallet } = useExportWallet()
+  const { whoami } = useAuthContext()
   const connectButtonWrapperRef = useRef<HTMLDivElement>(null)
 
   // Auto-open ConnectButton modal on mount when not connected
@@ -53,19 +54,30 @@ function App() {
           const publicKey = keyPair.publicKeyUncompressed
           
           // Export wallet
-          const res = await exportWallet(publicKey, pvtKey, 'evm')
+          const exportWalletRes = await exportWallet(publicKey, pvtKey, 'evm')
           
-          // Console log the response
-          console.log('Export wallet response:', res)
+          // Console log the export wallet response
+          console.log('Export wallet response:', exportWalletRes)
           
-          // Send LOGIN_SUCCESS event with the response
+          // Call whoami
+          const whoamiRes = whoami && typeof whoami === 'function' 
+            ? await (whoami as () => Promise<any>)() 
+            : whoami
+          
+          // Console log the whoami response
+          console.log('Whoami response:', whoamiRes)
+          
+          // Send LOGIN_SUCCESS event with both responses
           webView.postMessage(JSON.stringify({
             event: 'LOGIN_SUCCESS',
-            data: res
+            data: {
+              exportWallet: exportWalletRes,
+              whoami: whoamiRes
+            }
           }))
         } catch (error) {
-          console.error('Error exporting wallet:', error)
-          // Still send LOGIN_SUCCESS even if export fails
+          console.error('Error in login success handler:', error)
+          // Still send LOGIN_SUCCESS even if something fails
           webView.postMessage(JSON.stringify({
             event: 'LOGIN_SUCCESS',
             error: error instanceof Error ? error.message : 'Unknown error'
@@ -75,7 +87,7 @@ function App() {
       
       handleLoginSuccess()
     }
-  }, [isConnected, exportWallet])
+  }, [isConnected, exportWallet, whoami])
 
   // Prevent backdrop clicks from closing modals using CSS pointer-events
   useEffect(() => {
