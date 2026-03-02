@@ -39,6 +39,13 @@ function App() {
     }
   }, [isConnected])
 
+  // Send message to React Native WebView when login is successful
+  useEffect(() => {
+    if (isConnected && window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage('LOGIN_SUCCESS')
+    }
+  }, [isConnected])
+
   // Prevent backdrop clicks from closing modals using CSS pointer-events
   useEffect(() => {
     const disableBackdropClicks = () => {
