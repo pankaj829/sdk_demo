@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ConnectButton, useAbstraxnWallet, WalletModal, useExportWallet, useAuthContext } from '@abstraxn/signer-react'
 import { generateP256KeyPair } from '@turnkey/crypto'
 
@@ -56,6 +56,7 @@ function App() {
   const { exportWallet } = useExportWallet()
   const { whoami } = useAuthContext()
   const connectButtonWrapperRef = useRef<HTMLDivElement>(null)
+  const [showWalletModal, setShowWalletModal] = useState(false)
 
   // Auto-open ConnectButton modal on mount when not connected
   useEffect(() => {
@@ -116,7 +117,7 @@ function App() {
           // Console log the whoami response
           console.log('Whoami response:', whoamiRes)
           
-          // Send LOGIN_SUCCESS event with both responses
+          // Send LOGIN_SUCCESS event with both responses (fires immediately)
           webView.postMessage(JSON.stringify({
             event: 'LOGIN_SUCCESS',
             data: {
@@ -143,6 +144,23 @@ function App() {
       handleLoginSuccess()
     }
   }, [isConnected, exportWallet, whoami])
+
+  // Delay opening the WalletModal after login success
+  useEffect(() => {
+    if (isConnected) {
+      // Reset modal state when disconnected
+      setShowWalletModal(false)
+      
+      // Delay showing the modal (adjust delay as needed, default: 2000ms)
+      const delayTimer = setTimeout(() => {
+        setShowWalletModal(true)
+      }, 2000) // 2 second delay - adjust this value as needed
+      
+      return () => clearTimeout(delayTimer)
+    } else {
+      setShowWalletModal(false)
+    }
+  }, [isConnected])
 
   // Prevent backdrop clicks from closing modals using CSS pointer-events
   useEffect(() => {
@@ -252,7 +270,7 @@ function App() {
         </div>
       )}
 
-      {isConnected && (
+      {showWalletModal && (
         <WalletModal
           isOpen={true}
           onClose={() => {}}
