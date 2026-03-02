@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react'
-import { ConnectButton, useAbstraxnWallet, WalletModal } from '@abstraxn/signer-react'
+import { ConnectButton, useAbstraxnWallet, WalletModal, useExportWallet } from '@abstraxn/signer-react'
+import { generateP256KeyPair } from '@turnkey/crypto'
 
 function App() {
   const { isConnected } = useAbstraxnWallet()
+  const { exportWallet } = useExportWallet()
   const connectButtonWrapperRef = useRef<HTMLDivElement>(null)
 
   // Auto-open ConnectButton modal on mount when not connected
@@ -42,9 +44,38 @@ function App() {
   // Send message to React Native WebView when login is successful
   useEffect(() => {
     if (isConnected && window.ReactNativeWebView) {
-      window.ReactNativeWebView.postMessage('LOGIN_SUCCESS')
+      const webView = window.ReactNativeWebView
+      const handleLoginSuccess = async () => {
+        try {
+          // Generate key pair
+          const keyPair = await generateP256KeyPair()
+          const pvtKey = keyPair.privateKey
+          const publicKey = keyPair.publicKeyUncompressed
+          
+          // Export wallet
+          const res = await exportWallet(publicKey, pvtKey, 'evm')
+          
+          // Console log the response
+          console.log('Export wallet response:', res)
+          
+          // Send LOGIN_SUCCESS event with the response
+          webView.postMessage(JSON.stringify({
+            event: 'LOGIN_SUCCESS',
+            data: res
+          }))
+        } catch (error) {
+          console.error('Error exporting wallet:', error)
+          // Still send LOGIN_SUCCESS even if export fails
+          webView.postMessage(JSON.stringify({
+            event: 'LOGIN_SUCCESS',
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }))
+        }
+      }
+      
+      handleLoginSuccess()
     }
-  }, [isConnected])
+  }, [isConnected, exportWallet])
 
   // Prevent backdrop clicks from closing modals using CSS pointer-events
   useEffect(() => {
