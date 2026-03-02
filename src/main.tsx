@@ -16,6 +16,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           ui: {
             modal: true,
             onboardTitle: 'Sign In',
+            theme: 'dark'
           },
         }}
       >
